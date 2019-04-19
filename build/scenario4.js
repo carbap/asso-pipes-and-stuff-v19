@@ -1,4 +1,3 @@
-"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -7,17 +6,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-Object.defineProperty(exports, "__esModule", { value: true });
 class Publisher4 {
-    constructor(maxQueueSize) {
+    constructor(id, maxQueueSize) {
         this.producedMessages = new Array();
+        this.id = id;
         this.queue = new BoundedAsyncQueue(maxQueueSize);
     }
     write(message) {
         return __awaiter(this, void 0, void 0, function* () {
             yield this.queue.enqueue(message);
             this.producedMessages.push(message);
-            console.log(message.content + " - published (tag: " + message.tag + ")");
+            console.log("p" + this.id + " published (" + message.content + ", tag: " + message.tag + ")");
         });
     }
 }
@@ -58,7 +57,7 @@ class Broker {
             while (true) {
                 let delayPromise = new Promise((resolve, reject) => {
                     setTimeout(() => {
-                        //console.log("Broker is resting for 1 sec");
+                        //console.log("Broker is resting for 5 seconds");
                         resolve();
                     }, 5000);
                 });
@@ -85,21 +84,15 @@ class BoundedAsyncQueue {
     }
     enqueue(message) {
         return __awaiter(this, void 0, void 0, function* () {
-            //console.log("checking if enqueue is possible");
             yield this.semaphore.waitPush();
-            //console.log("enqueue will proceed");
             this.queue.push(message);
             this.semaphore.signalPush();
-            //console.log(this.queue);
         });
     }
     dequeue(order) {
         return __awaiter(this, void 0, void 0, function* () {
-            //console.log("checking if dequeue is possible");
             yield this.semaphore.waitPull(order);
-            //console.log("DEQUEUE ordered by " + order + ", current );
             let message = this.queue.shift() || new Message4(1, "error message");
-            //console.log("DEQUED MESSAGE: (" + message.content + ", " + message.tag + "), ordered by " + order + ", remaining queue: " + this.queue);
             this.semaphore.signalPull();
             return message;
         });
@@ -113,19 +106,15 @@ class AsyncSemaphore {
     }
     signalPush() {
         this.emptySize--;
-        //console.log("Push has been made - queue size has been incremented");
     }
     signalPull() {
         this.currentSize--;
-        //console.log("Pull has been made - queue size has been diminished");
     }
     waitPush() {
         return __awaiter(this, void 0, void 0, function* () {
             while (this.currentSize >= this.maxSize) {
-                //console.log("waiting for free space to push message");
                 let promise = new Promise((resolve, reject) => {
                     setTimeout(() => {
-                        //console.log("done waiting for free space for one second");
                         resolve();
                     }, 1000);
                 });
@@ -137,17 +126,14 @@ class AsyncSemaphore {
     waitPull(order) {
         return __awaiter(this, void 0, void 0, function* () {
             while (this.emptySize >= this.maxSize) {
-                //console.log(order + "is waiting for a message to pull");
                 var promise = new Promise((resolve, reject) => {
                     setTimeout(() => {
-                        //console.log(order + "done waiting for a message for one second");
                         resolve();
                     }, 1000);
                 });
                 yield promise;
             }
             this.emptySize++;
-            //console.log(order + "CAN DEQUEUE");
         });
     }
 }
@@ -161,32 +147,10 @@ function produce(publishers) {
                 let message = new Message4(tag, content);
                 pub.write(message);
             }
-            /*let delayPromise = new Promise((resolve, reject) => {
-                setTimeout(() => {
-                    //console.log("Publishers are stoping for 3 seconds");
-                    resolve();
-                }, 500);
-            });
-            await delayPromise;*/
             productionRounds++;
         }
     });
 }
-/*async function consume(subscribers: Array<Subscriber4>) {
-    while(true) {
-        for(let sub of subscribers){
-            sub.read();
-        }
-
-        let delayPromise = new Promise((resolve, reject) => {
-            setTimeout(() => {
-                //console.log("Subscribers are stoping for 0.5 seconds");
-                resolve();
-            }, 500);
-        });
-        await delayPromise;
-    }
-}*/
 setInterval(() => { }, 1000); // run program until explicit exit
 function sameContent(a1, a2) {
     if (a1.length <= 0 && a2.length <= 0)
@@ -212,10 +176,10 @@ function sameContent(a1, a2) {
     return true;
 }
 (() => __awaiter(this, void 0, void 0, function* () {
-    var p1 = new Publisher4(1);
-    var p2 = new Publisher4(3);
-    var p3 = new Publisher4(3);
-    var p4 = new Publisher4(3);
+    var p1 = new Publisher4(1, 1);
+    var p2 = new Publisher4(2, 3);
+    var p3 = new Publisher4(3, 3);
+    var p4 = new Publisher4(4, 3);
     let publishers = [p1, p2, p3, p4];
     var s1 = new Subscriber4(1, [1], 5);
     var s2 = new Subscriber4(2, [2], 5);
@@ -224,7 +188,6 @@ function sameContent(a1, a2) {
     produce(publishers);
     let broker = new Broker(publishers, subscribers);
     broker.work();
-    //consume(subscribers);
     let delayPromise = new Promise((resolve, reject) => {
         setTimeout(() => {
             let producedMsgs = new Array();
@@ -245,11 +208,6 @@ function sameContent(a1, a2) {
         }, 40000);
     });
     yield delayPromise;
-    //await s.read();
-    //console.log("se isto não aparecer, é porque ainda esta à espera que mensagens aparecam para ler");
-    /*var message = await p.queue.dequeue()
-    console.log(message.content);*/
-    //setTimeout({}, 5000);
     process.exit();
 }))();
 //# sourceMappingURL=scenario4.js.map
