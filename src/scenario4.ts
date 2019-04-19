@@ -33,7 +33,7 @@ class Subscriber4 implements Observer4 {
     }
 
     async read(){
-        let message = await this.queue.dequeue("subscriber");
+        let message = await this.queue.dequeue();
         this.readMessages.push(message);
         console.log("s" + this.id + " read (" + message.content + ", tag: " + message.tag + ")");
     }
@@ -72,7 +72,7 @@ class Broker {
             //console.log("Fetching promises from publishers");
             for(let pub of this.publishers)
             {
-                let promise = pub.queue.dequeue("broker");
+                let promise = pub.queue.dequeue();
                 this.deliverMessage(promise);
             }
         }
@@ -105,8 +105,8 @@ class BoundedAsyncQueue {
         this.semaphore.signalPush();
     }
 
-    async dequeue(order : String): Promise<Message4> {
-        await this.semaphore.waitPull(order);
+    async dequeue(): Promise<Message4> {
+        await this.semaphore.waitPull();
         let message = this.queue.shift() || new Message4(1, "error message");
         this.semaphore.signalPull();
         return message;
@@ -145,7 +145,7 @@ class AsyncSemaphore  {
         this.currentSize++;
     }
 
-    async waitPull(order: String): Promise<void> {
+    async waitPull(): Promise<void> {
         while(this.emptySize >= this.maxSize) { 
             var promise = new Promise((resolve, reject) => {
                 setTimeout(() => {

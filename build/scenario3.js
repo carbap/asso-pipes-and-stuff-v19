@@ -41,37 +41,38 @@ class Subscriber3 {
 }
 Subscriber3.nextId = 0;
 class AsyncQueue3 {
-    constructor() {
+    constructor(subscribers) {
         this.messageQueue = [];
-        this.ventilator = new Ventilator3();
+        this.ventilator = new Ventilator3(subscribers, this);
     }
     push(m) {
         return __awaiter(this, void 0, void 0, function* () {
             console.log("publisher push, msgId : " + m.getValue());
             this.messageQueue.push(m);
-            yield this.ventilator.notifySubscriberList(m);
-            for (var i = 0; i < this.messageQueue.length; i++) {
-                if (this.messageQueue[i].getValue() == m.getValue()) {
-                    this.messageQueue.splice(i, 1);
-                }
-            }
+            this.ventilator.read();
         });
     }
-    registerSubscriber(s) {
-        this.ventilator.registerSubscriber(s);
+    pull() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.messageQueue.shift();
+        });
     }
     unregisterSubscriber(s) {
         this.ventilator.unregisterSubscriber(s);
     }
 }
 class Ventilator3 {
-    constructor() {
-        this.subscriberList = [];
+    constructor(subscribers, queue) {
+        this.subscriberList = subscribers;
         this.pendingACK = [];
+        this.queue = queue;
     }
-    registerSubscriber(s) {
-        this.subscriberList.push(s);
-        console.log("registered subID : " + s.getId());
+    read() {
+        return __awaiter(this, void 0, void 0, function* () {
+            let message = yield this.queue.pull();
+            console.log("ventilator read msg: " + message.getValue());
+            this.notifySubscriberList(message);
+        });
     }
     unregisterSubscriber(s) {
         for (var i = 0; i < this.subscriberList.length; i++) {
@@ -142,7 +143,10 @@ class MsgMetaData3 {
         return this.subId;
     }
 }
-function test3() {
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+(() => __awaiter(this, void 0, void 0, function* () {
     var s0 = new Subscriber3();
     var s1 = new Subscriber3();
     var s2 = new Subscriber3();
@@ -150,18 +154,17 @@ function test3() {
     var s4 = new Subscriber3();
     var s5 = new Subscriber3();
     var p = new Publisher3();
-    var mq = new AsyncQueue3();
-    mq.registerSubscriber(s0);
-    mq.registerSubscriber(s1);
-    mq.push(p.generate());
-    mq.registerSubscriber(s2);
-    mq.registerSubscriber(s3);
-    mq.unregisterSubscriber(s0);
-    mq.push(p.generate());
-    mq.registerSubscriber(s4);
-    mq.registerSubscriber(s5);
-    mq.unregisterSubscriber(s1);
-    mq.push(p.generate());
-}
-test3();
+    var queue = new AsyncQueue3([s0, s1, s2, s3, s4, s5]);
+    queue.push(p.generate());
+    queue.push(p.generate());
+    queue.push(p.generate());
+    yield sleep(1000);
+    queue.unregisterSubscriber(s0);
+    queue.unregisterSubscriber(s1);
+    queue.push(p.generate());
+    queue.push(p.generate());
+    queue.push(p.generate());
+    yield sleep(3000);
+    process.exit();
+}))();
 //# sourceMappingURL=scenario3.js.map

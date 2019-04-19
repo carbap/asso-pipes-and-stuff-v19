@@ -29,7 +29,7 @@ class Subscriber4 {
     }
     read() {
         return __awaiter(this, void 0, void 0, function* () {
-            let message = yield this.queue.dequeue("subscriber");
+            let message = yield this.queue.dequeue();
             this.readMessages.push(message);
             console.log("s" + this.id + " read (" + message.content + ", tag: " + message.tag + ")");
         });
@@ -64,7 +64,7 @@ class Broker {
                 yield delayPromise;
                 //console.log("Fetching promises from publishers");
                 for (let pub of this.publishers) {
-                    let promise = pub.queue.dequeue("broker");
+                    let promise = pub.queue.dequeue();
                     this.deliverMessage(promise);
                 }
             }
@@ -89,9 +89,9 @@ class BoundedAsyncQueue {
             this.semaphore.signalPush();
         });
     }
-    dequeue(order) {
+    dequeue() {
         return __awaiter(this, void 0, void 0, function* () {
-            yield this.semaphore.waitPull(order);
+            yield this.semaphore.waitPull();
             let message = this.queue.shift() || new Message4(1, "error message");
             this.semaphore.signalPull();
             return message;
@@ -123,7 +123,7 @@ class AsyncSemaphore {
             this.currentSize++;
         });
     }
-    waitPull(order) {
+    waitPull() {
         return __awaiter(this, void 0, void 0, function* () {
             while (this.emptySize >= this.maxSize) {
                 var promise = new Promise((resolve, reject) => {

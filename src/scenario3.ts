@@ -1,4 +1,3 @@
-
 class Message3 {
     private value : number;
     private static nextValue : number = 0;
@@ -24,6 +23,10 @@ class Publisher3 {
 
 interface Observer3 {
     receive(m : Message3, v : Ventilator3) : void
+}
+
+interface VentilatorObserver3 {
+    read() : Promise<void>
 }
 
 class Subscriber3 implements Observer3{
@@ -56,25 +59,22 @@ class AsyncQueue3 {
     private messageQueue : Message3[];
     private ventilator : Ventilator3;
 
-    constructor() {
+    constructor(subscribers : Array<Subscriber3>) {
         this.messageQueue = [];
-        this.ventilator = new Ventilator3();
+        this.ventilator = new Ventilator3(subscribers, this);
     }
 
     public async push(m : Message3) : Promise<void>{
         console.log("publisher push, msgId : " + m.getValue());
 
         this.messageQueue.push(m);
-        await this.ventilator.notifySubscriberList(m);
-        for(var i = 0; i < this.messageQueue.length; i++) {
-            if(this.messageQueue[i].getValue() == m.getValue()) {
-                this.messageQueue.splice(i, 1);
-            }
-        }
+
+        this.ventilator.read()
+
     }
 
-    public registerSubscriber(s : Subscriber3) {
-        this.ventilator.registerSubscriber(s);
+    public async pull() : Promise<Message3> {
+        return this.messageQueue.shift();
     }
 
     public unregisterSubscriber(s : Subscriber3) {
@@ -82,19 +82,22 @@ class AsyncQueue3 {
     }
 }
 
-class Ventilator3 {
+class Ventilator3 implements VentilatorObserver3{
 
     private subscriberList : Subscriber3[];
     private pendingACK : MsgMetaData3[];
+    private queue : AsyncQueue3;
 
-    constructor() {
-        this.subscriberList = [];
+    constructor(subscribers : Array<Subscriber3>, queue : AsyncQueue3) {
+        this.subscriberList = subscribers;
         this.pendingACK = [];
+        this.queue = queue;
     }
 
-    public registerSubscriber(s : Subscriber3) {
-        this.subscriberList.push(s);
-        console.log("registered subID : " + s.getId());
+    public async read() : Promise<void> {
+        let message = await this.queue.pull();
+        console.log("ventilator read msg: " + message.getValue());
+        this.notifySubscriberList(message);
     }
 
     public unregisterSubscriber(s : Subscriber3) {
@@ -181,7 +184,12 @@ class MsgMetaData3 {
     }
 }
 
-function test3() {
+function sleep(ms : number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+(async () => {
+
     var s0 = new Subscriber3();
     var s1 = new Subscriber3();
     var s2 = new Subscriber3();
@@ -189,24 +197,22 @@ function test3() {
     var s4 = new Subscriber3();
     var s5 = new Subscriber3();
     var p = new Publisher3();
-    var mq = new AsyncQueue3();
+    var queue = new AsyncQueue3([s0,s1,s2,s3,s4,s5]);
 
-    mq.registerSubscriber(s0);
-    mq.registerSubscriber(s1);
+    queue.push(p.generate());
+    queue.push(p.generate());
+    queue.push(p.generate());
 
-    mq.push(p.generate());
+    await sleep(1000)
 
-    mq.registerSubscriber(s2);
-    mq.registerSubscriber(s3);
-    mq.unregisterSubscriber(s0);
+    queue.unregisterSubscriber(s0);
+    queue.unregisterSubscriber(s1);
 
-    mq.push(p.generate());
+    queue.push(p.generate());
+    queue.push(p.generate());
+    queue.push(p.generate());
 
-    mq.registerSubscriber(s4);
-    mq.registerSubscriber(s5);
-    mq.unregisterSubscriber(s1);
-    
-    mq.push(p.generate());
-}
+    await sleep(3000)
 
-test3();
+    process.exit()
+})()
