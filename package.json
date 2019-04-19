@@ -8,10 +8,12 @@
     "main": "script.js",
     "dependencies": {
         "@types/is-array-sorted": "^1.0.0",
-        "is-array-sorted": "^1.0.0"
+        "@types/underscore": "^1.8.14",
+        "is-array-sorted": "^1.0.0",
+        "underscore": "^1.9.1"
     },
     "devDependencies": {
-        "@types/node": "^11.13.0",
+        "@types/node": "^11.13.5",
         "browserify": "^16.2.2",
         "npm": "^6.0.1",
         "opn-cli": "^4.0.0",
